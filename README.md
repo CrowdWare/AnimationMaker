@@ -1,6 +1,6 @@
 # AnimationMaker
 
-![Image](assets/AnimationMaker.png) 
+![Image](images/AnimationMaker.png) 
 
 AnimationMaker is a software designed to help you to quickly build presentation video which you can upload to youtube or vimeo. These presentation videos can be used as pitch videos for crowdfunding campaigns for example.
 It is also possible to create animated gifs.
