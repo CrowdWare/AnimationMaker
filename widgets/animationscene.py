@@ -17,32 +17,15 @@
 #  along with AnimationMaker.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from enum import Enum
+from widgets.enums import EditMode
 from widgets.rectangle import Rectangle
+from widgets.itemhandle import ItemHandle
+from widgets.commands import AddItemCommand
 from PySide6.QtWidgets import QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene, QGraphicsItem
-from PySide6.QtCore import Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
+from PySide6.QtCore import Signal, Qt, QUrl, QPointF, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
 from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QColor, QBrush, QPen
 import resources
-
-
-class ItemType(Enum):
-    TypeItem = 0
-    TypeRectangle = 1
-    TypeEllipse = 2
-    TypeText = 3
-    TypeBitmap = 4
-    TypeSvg = 5
-
-
-class EditMode(Enum):
-    ModeSelect = 0
-    ModeRectangle = 1
-    ModeEllipse = 2
-    ModeText = 3
-    ModeBitmap = 4
-    ModeSvg = 5
-    ModePlugin = 6
 
 
 class AnimationScene(QGraphicsScene):
@@ -66,6 +49,7 @@ class AnimationScene(QGraphicsScene):
         self.playheadPosition = 0
         self.movingItem = None
         self.scaling = 1
+        self.isChanged = False
         self.addBackgroundRect()
 
     def addBackgroundRect(self):
@@ -87,22 +71,19 @@ class AnimationScene(QGraphicsScene):
     def setEditMode(self, mode):
         self.editMode = mode
 
-    def setEditMode(self, pluginName):
+    def setEditModePlugin(self, pluginName):
         self.editMode = EditMode.ModePlugin
         self.actPluginName = pluginName
 
     def setFileVersion(self, version): 
         self.fileVersion = version
 
-    def fps(self):
-        return self.fps
-
     def setFps(self, value):
         self.fps = value
 
     def setWidth(self, value):
-        self.setSceneRect(0, 0, value, height())
-        self.rect.setRect(0,0,value, height()) 
+        self.setSceneRect(0, 0, value, self.height())
+        self.rect.setRect(0,0,value, self.height()) 
         #emit sizeChanged(value, height())
 
     def setHeight(self, value):
@@ -247,63 +228,62 @@ class AnimationScene(QGraphicsScene):
     def mousePressEvent(self, mouseEvent):
         if mouseEvent.button() != Qt.LeftButton:
             return
-        #if self.editMode == EditMode.ModeSelect:
-        #     self.movingItem = None
-        #     handle = None
-        #     mousePos = QPointF(mouseEvent.buttonDownScenePos(Qt.LeftButton).x(), mouseEvent.buttonDownScenePos(Qt.LeftButton).y())
-        #     itemList = self.items(mousePos)
-        #     for item in itemList:
-        #         if item is ItemHandle:
-        #             break
-        #         self.movingItem = item
-        #         if self.movingItem and self.movingItem.isSceneRect():
-        #             self.movingItem = None
 
-        #         if self.movingItem:
-        #             self.oldPos = self.movingItem.pos()
-        #             break
+        if self.editMode == EditMode.ModeSelect:
+            self.movingItem = None
+            handle = None
+            mousePos = QPointF(mouseEvent.buttonDownScenePos(Qt.LeftButton).x(), mouseEvent.buttonDownScenePos(Qt.LeftButton).y())
+            itemList = self.items(mousePos)
+            for item in itemList:
+                if item is ItemHandle:
+                    break
+                self.movingItem = item
+                if self.movingItem and self.movingItem.isSceneRect:
+                    self.movingItem = None
+
+                if self.movingItem:
+                    self.oldPos = self.movingItem.pos()
+                    break
                 
-        #     if not self.movingItem# and not handle:
-        #         self.blackSelectionRect = self.addRect(0, 0, 1, 1, QPen(QColor("#000000")))
-        #         self.blackSelectionRect.setPos(mousePos)
-        #         self.whiteSelectionRect = self.addRect(1, 1, 1, 1, QPen(QColor("#ffffff")))
-        #         self.whiteSelectionRect.setPos(mousePos)
-        #    QGraphicsScene.mousePressEvent(mouseEvent)
+            if not self.movingItem and not handle:
+                self.blackSelectionRect = self.addRect(0, 0, 1, 1, QPen(QColor("#000000")))
+                self.blackSelectionRect.setPos(mousePos)
+                self.whiteSelectionRect = self.addRect(1, 1, 1, 1, QPen(QColor("#ffffff")))
+                self.whiteSelectionRect.setPos(mousePos)
+            #QGraphicsScene.mousePressEvent(mouseEvent)
             
-        #else:
-        #    addCommand = AddItemCommand(mouseEvent.scenePos().x(), mouseEvent.scenePos().y(), self.editMode, None, self)
-        #    self.undoStack.push(addCommand)
+        else:
+            addCommand = AddItemCommand(mouseEvent.scenePos().x(), mouseEvent.scenePos().y(), self.editMode, None, self)
+            self.undoStack.push(addCommand)
 
     def mouseMoveEvent(self, mouseEvent):
-        pass
-        # if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
-        #     self.blackSelectionRect.setRect(0, 0, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
-        #     self.whiteSelectionRect.setRect(1, 1, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
+        if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
+            self.blackSelectionRect.setRect(0, 0, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
+            self.whiteSelectionRect.setRect(1, 1, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
         #QGraphicsScene.mouseMoveEvent(mouseEvent)
 
     def mouseReleaseEvent(self,  mouseEvent):
-        pass
-        # if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
-        #     itemList = self.items(self.blackSelectionRect.pos().x(), self.blackSelectionRect.pos().y(), self.blackSelectionRect.rect().width(), self.blackSelectionRect.rect().height(), Qt::IntersectsItemShape, Qt::AscendingOrder)
-        #     for item in itemList:
-        #         item.setSelected(True)
+        if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
+            itemList = self.items(self.blackSelectionRect.pos().x(), self.blackSelectionRect.pos().y(), self.blackSelectionRect.rect().width(), self.blackSelectionRect.rect().height(), Qt.IntersectsItemShape, Qt.AscendingOrder)
+            for item in itemList:
+                item.setSelected(True)
                 
-        #     self.removeItem(self.blackSelectionRect)
-        #     self.removeItem(self.whiteSelectionRect)
-        #     del self.blackSelectionRect
-        #     del self.whiteSelectionRect
+            self.removeItem(self.blackSelectionRect)
+            self.removeItem(self.whiteSelectionRect)
+            del self.blackSelectionRect
+            del self.whiteSelectionRect
+            self.blackSelectionRect = None
 
-        # if self.movingItem and mouseEvent.button() == Qt.LeftButton:
-        #     if self.oldPos != self.movingItem.pos():
-        #         cmd = MoveItemCommand(self.movingItem.x(), self.movingItem.y(), self.oldPos.x(), self.oldPos.y(), self, self.movingItem)
-        #         self.undoStack.push(cmd)
-        #     self.movingItem = None
+        #if self.movingItem and mouseEvent.button() == Qt.LeftButton:
+        #    if self.oldPos != self.movingItem.pos():
+        #        cmd = MoveItemCommand(self.movingItem.x(), self.movingItem.y(), self.oldPos.x(), self.oldPos.y(), self, self.movingItem)
+        #        self.undoStack.push(cmd)
+        #    self.movingItem = None
         #QGraphicsScene.mouseReleaseEvent(mouseEvent)
 
     def keyPressEvent(self, e):
-        pass
-        # if self.selectedItems().count() == 0:
-        #     return
+        if len(self.selectedItems()) == 0:
+             return
 
         # itemList = self.selectedItems()
         # for item in itemList:

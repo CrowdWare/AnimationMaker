@@ -17,7 +17,8 @@
 #  along with AnimationMaker.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from widgets.animationscene import AnimationScene
+from widgets.animationscene import AnimationScene, EditMode
+from widgets.animationitem import AnimationItem
 from widgets.timeline import Timeline
 from widgets.itempropertyeditor import ItemPropertyEditor
 from widgets.scenepropertyeditor import ScenePropertyEditor
@@ -26,7 +27,7 @@ from widgets.transitioneditor import TransitionEditor
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QScrollArea, QSplitter, QComboBox, QDockWidget, QApplication, QMenu, QToolBar
 from PySide6.QtCore import QFileInfo, Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
-from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QPainter, QPixmap, QImage, QCursor, QImageReader
 import resources
 
 class MainWindow(QMainWindow):
@@ -203,12 +204,12 @@ class MainWindow(QMainWindow):
         self.svgAct.setIcon(QIcon(":/images/svg.png"))
         self.svgAct.setCheckable(True)
 
-        # connect(self.selectAct, SIGNAL(triggered()), this, SLOT(setSelectMode()))
-        # connect(self.rectangleAct, SIGNAL(triggered()), this, SLOT(setRectangleMode()))
-        # connect(self.ellipseAct, SIGNAL(triggered()), this, SLOT(setEllipseMode()))
-        # connect(self.textAct, SIGNAL(triggered()), this, SLOT(setTextMode()))
-        # connect(self.bitmapAct, SIGNAL(triggered()), this, SLOT(loadNewBitmap()))
-        # connect(self.svgAct, SIGNAL(triggered()), this, SLOT(loadNewSvg()))
+        self.selectAct.triggered.connect(self.setSelectMode)
+        self.rectangleAct.triggered.connect(self.setRectangleMode)
+        self.ellipseAct.triggered.connect(self.setEllipseMode)
+        self.textAct.triggered.connect(self.setTextMode)
+        self.bitmapAct.triggered.connect(self.loadNewBitmap)
+        self.svgAct.triggered.connect(self.loadNewSvg)
 
         toolpanel.addAction(self.selectAct)
         toolpanel.addAction(self.rectangleAct)
@@ -315,7 +316,37 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.writeSettings()
-        event.accept()
+
+        if not self.scene.isChanged:
+            event.accept()
+            return
+
+        save = QMessageBox()
+        save.setText("The project has been modified.")
+        save.setInformativeText("Would you like to save ?")
+        save.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+        save.setDefaultButton(QMessageBox.Save)
+        save.setIcon(QMessageBox.Warning)
+        ret = save.exec()
+        
+        if ret == QMessageBox.Save:
+            #if project already linked to a file just save it
+            if not self.loadedFile.fileName() == "":
+                self.save()
+            else:
+                if not self.saveAs():
+                    # failed to save, do not quit
+                    event.ignore()
+                    return
+            event.accept()
+        elif ret == QMessageBox.Discard:
+            event.accept()
+        elif ret == QMessageBox.Cancel:
+            # do not quit, reject the event
+            event.ignore()
+        else:
+            QMessageBox.warning(self, "Unknown action", "The current action is unknown, do not quit")
+            event.ignore()
 
     def writeSettings(self):
         settings = QSettings(QSettings.IniFormat, QSettings.UserScope, QCoreApplication.organizationName(), QCoreApplication.applicationName())
@@ -378,7 +409,7 @@ class MainWindow(QMainWindow):
 
         self.writeFile(fileName)
         self.loadedFile.setFile(fileName)
-        #emit this.enableSave(true)
+        #emit this.enableSave(True)
         self.setTitle()
         return True
 
@@ -414,3 +445,138 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(QCoreApplication.applicationName())
         else:
             self.setWindowTitle(QCoreApplication.applicationName() + " - " + self.loadedFile.completeBaseName() + "." + self.loadedFile.suffix())
+
+    def reset(self):
+        self.setCentralWidget(self.splitter)
+        self.scene.reset()
+        self.timeline.reset()
+
+    def newfile(self):
+        self.reset()
+        self.fillTree()
+        #emit this.enableSave(false)
+        self.loadedFile.setFile("")
+        self.setTitle()
+        self.scenePropertyEditor.setScene(self.scene)
+        self.propertiesdock.setWidget(self.scenePropertyEditor)
+
+    def open(self):
+        fileName = ""
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setNameFilter("AnimationMaker (*.amx)All Files (*)")
+        dialog.setWindowTitle("Open Animation")
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        if dialog.exec():
+            fileName = dialog.selectedFiles()[0]
+        del dialog
+        if fileName == "":
+            return
+
+        fullyLoaded = self.scene.importXml(fileName)
+
+        self.fillTree()
+        self.elementTree.expandAll()
+        self.scenePropertyEditor.setScene(self.scene)
+        self.timeline.expandTree()
+
+        if fullyLoaded:
+            self.loadedFile.setFile(fileName)
+            #emit this.enableSave(True)
+            self.setTitle()
+        self.timeline.setPlayheadPosition(0)
+
+    def fillTree(self):
+        for i in reversed(range(self.root.childCount() - 1)) :
+            treeItem = self.root.child(i)
+            self.root.removeChild(treeItem)
+            del treeItem
+
+        itemList = self.scene.items(Qt.AscendingOrder)
+        for item in itemList:
+            if item is AnimationItem and not item.isSceneRect():
+                treeItem = QTreeWidgetItem()
+                treeItem.setText(0, item.id())
+                treeItem.setIcon(0, QIcon(":/images/rect.png"))
+                treeItem.setData(0,  Qt.ToolTipRole, item)
+                self.root.addChild(treeItem)
+                self.addCheckboxes(treeItem, item)
+                #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
+
+    def idChanged(self, item, id):
+        for child in self.root.child:
+            if child.data(0, Qt.ToolTipRole).value == item:
+                child.setText(0, id)
+                break
+
+    def elementTreeItemChanged(self, newItem, i):
+        self.scene.clearSelection()
+        item = newItem.data(0, Qt.ToolTipRole).value
+        if item:
+            item.setSelected(True)
+            self.itemPropertyEditor.setItem(item)
+            self.propertiesdock.setWidget(self.itemPropertyEditor)
+        else:
+            self.propertiesdock.setWidget(self.scenePropertyEditor)
+
+    def sceneSizeChanged(self, width, height):
+        self.view.setSceneRect(-100, -100, width + 200, height + 200)
+
+    def setSelectMode(self):
+        self.scene.setEditMode(EditMode.ModeSelect)
+        self.scene.setCursor(Qt.ArrowCursor)
+
+    def setRectangleMode(self):
+        self.scene.clearSelection()
+        self.scene.setCursor(QCursor(QPixmap.fromImage(QImage(":/images/rect_cursor.png"))))
+        self.scene.setEditMode(EditMode.ModeRectangle)
+
+    def setEllipseMode(self):
+        self.scene.clearSelection()
+        self.scene.setCursor(QCursor(QPixmap.fromImage(QImage(":/images/ellipse_cursor.png"))))
+        self.scene.setEditMode(EditMode.ModeEllipse)
+
+    def setTextMode(self):
+        self.scene.clearSelection()
+        self.scene.setCursor(QCursor(QPixmap.fromImage(QImage(":/images/text_cursor.png"))))
+        self.scene.setEditMode(EditMode.ModeText)
+
+    def loadNewBitmap(self):
+        self.scene.clearSelection()
+        self.addNewImage(EditMode.ModeBitmap)
+
+    def loadNewSvg(self):
+        self.scene.clearSelection()
+        self.addNewImage(EditMode.ModeSvg)
+
+    def addNewImage(self, mode):
+        if mode == EditMode.ModeBitmap:
+            formatList = QImageReader.supportedImageFormats()
+            filter = "Image Files ("
+
+            for format in formatList:
+                # we have a dedicated button for svg images
+                if not "svg" in format:
+                    filter += " *." + format
+
+            filter += ")"
+            title = "Open Bitmap"
+        else:
+            filter = "SVG Files (*.svg)"
+            title = "Open SVG"
+
+        if not filter == "":
+            filename = ""
+            dialog = QFileDialog(self, Qt.Dialog)
+            dialog.setFileMode(QFileDialog.ExistingFile)
+            dialog.setNameFilter(filter)
+            dialog.setWindowTitle(title)
+            dialog.setAcceptMode(QFileDialog.AcceptOpen)
+
+            if dialog.exec():
+                filename = dialog.selectedFiles()[0]
+
+            if not filename == "":
+                self.scene.addNewImage(filename, mode)
+

@@ -17,22 +17,15 @@
 #  along with AnimationMaker.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from enum import Enum
-from widgets.animationitem import AnimationItem
-from PySide6.QtWidgets import QStyle, QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene
+from widgets.playhead import PlayHead
+import widgets.functions
+from PySide6.QtWidgets import QScrollBar, QTreeWidget, QGridLayout, QLabel, QToolButton, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene, QGraphicsItem
 from PySide6.QtCore import Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
 from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon
 import resources
 
-class Rectangle(AnimationItem):
-    def __init__(self, scene, isSceneRect=False):
-        AnimationItem.__init__(self, scene, isSceneRect)
 
-    def paint(self, paint, option, widget):
-        paint.setPen(self.pen)
-        paint.setBrush(self.brush)
-        paint.drawRect(self.rect)
-
-        if option.state & QStyle.State_Selected:
-            self.drawHighlightSelected(paint, option)
+class ItemHandle(QGraphicsItem):
+    def __init__(self):
+        QGraphicsItem.__init__(self)

@@ -21,7 +21,7 @@ from enum import Enum
 from PySide6.QtWidgets import QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene, QGraphicsItem
 from PySide6.QtCore import QRectF, Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
-from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon
+from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QColor, QPen
 import resources
 
 
@@ -51,7 +51,7 @@ class AnimationItem(QWidget, QGraphicsItem):
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
 
         # QAction *delAct = QAction(tr("Delete"), self)
-        # delAct->setShortcut(tr("Delete"))
+        # delAct.setShortcut(tr("Delete"))
         # connect(delAct, SIGNAL(triggered()), this, SLOT(deleteItem()))
 
         # QAction *bringToFrontAct = new QAction("Bring to front", this)
@@ -73,13 +73,13 @@ class AnimationItem(QWidget, QGraphicsItem):
         # contextMenuActions.append(lowerAct)
 
         # self.contextMenu = new QMenu()
-        # self.contextMenu->addAction(delAct)
-        # self.contextMenu->addSeparator()
-        # self.contextMenu->addAction(bringToFrontAct)
-        # self.contextMenu->addAction(raiseAct)
-        # self.contextMenu->addAction(lowerAct)
-        # self.contextMenu->addAction(sendToBackAct)
-        # self.contextMenu->addSeparator()
+        # self.contextMenu.addAction(delAct)
+        # self.contextMenu.addSeparator()
+        # self.contextMenu.addAction(bringToFrontAct)
+        # self.contextMenu.addAction(raiseAct)
+        # self.contextMenu.addAction(lowerAct)
+        # self.contextMenu.addAction(sendToBackAct)
+        # self.contextMenu.addSeparator()
 
     def setScene(self, scene):
         self.scene = scene
@@ -91,7 +91,7 @@ class AnimationItem(QWidget, QGraphicsItem):
     def setPen(self, pen):
         self.pen = pen
         self.update()
-        #emit penChanged(m_pen.color());
+        #emit penChanged(m_pen.color())
 
     def setWidth(self, value):
         self.prepareGeometryChange()
@@ -134,3 +134,20 @@ class AnimationItem(QWidget, QGraphicsItem):
 
     def boundingRect(self):
         return self.rect
+
+
+    def drawHighlightSelected(self, painter, option):
+        itemPenWidth = self.pen.widthF()
+        pad = itemPenWidth / 2
+        penWidth = 0
+        fgcolor = option.palette.windowText().color()
+        bgcolor = QColor(0 if fgcolor.red() > 127 else 255, 0 if fgcolor.green() > 127 else 255, 0 if fgcolor.blue() > 127 else 255)
+
+        painter.setOpacity(1.0)
+        painter.setPen(QPen(bgcolor, penWidth, Qt.SolidLine))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(self.boundingRect().adjusted(pad, pad, -pad, -pad))
+
+        painter.setPen(QPen(option.palette.windowText(), 0, Qt.DashLine))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(self.boundingRect().adjusted(pad, pad, -pad, -pad))
