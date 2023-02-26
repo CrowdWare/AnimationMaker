@@ -30,6 +30,7 @@ from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGro
 import resources
 
 
+
 class AnimationScene(QGraphicsScene):
     def __init__(self):
         QGraphicsScene.__init__(self)
