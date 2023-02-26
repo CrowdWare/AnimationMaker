@@ -22,19 +22,20 @@ from widgets.animationitem import AnimationItem
 from PySide6.QtWidgets import QStyle, QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene
 from PySide6.QtCore import Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
-from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon
+from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QPen
 import resources
 
-class Rectangle(AnimationItem):
-    def __init__(self, scene, isSceneRect=False):
-        AnimationItem.__init__(self, scene, isSceneRect)
-        self.typeName = "Rectangle"
-        #self.type = Rectangle.type
+class Ellipse(AnimationItem):
+    def __init__(self, scene):
+        AnimationItem.__init__(self, scene)
+        self.setRect(0, 0, 0, 0)
+        self.typeName = "Ellipse"
+        #self.type = Ellipse.Type
 
     def paint(self, paint, option, widget):
         paint.setPen(self.pen)
         paint.setBrush(self.brush)
-        paint.drawRect(self.rect)
+        paint.drawEllipse(self.rect)
 
         if option.state & QStyle.State_Selected:
             self.drawHighlightSelected(paint, option)

@@ -19,6 +19,7 @@
 #############################################################################
 from widgets.enums import EditMode
 from widgets.rectangle import Rectangle
+from widgets.ellipse import Ellipse
 from PySide6.QtWidgets import QScrollBar, QTreeWidget, QGridLayout, QLabel, QToolButton, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene, QGraphicsItem
 from PySide6.QtCore import Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
@@ -46,20 +47,18 @@ class AddItemCommand(QUndoCommand):
             self.item.setWidth(50)
             self.item.setHeight(50)
             self.setText("Add Rectangle")
-    #         case AnimationScene.EditMode.ModeEllipse:
-    #         {
-    #             self.item = new Ellipse(self.scene)
-    #             self.item.setId("Ellipse")
-    #             self.item.setPen(QPen(Qt.black))
-    #             self.item.setBrush(QBrush(Qt.blue))
-    #             self.item.setFlag(QGraphicsItem.ItemIsMovable, true)
-    #             self.item.setFlag(QGraphicsItem.ItemIsSelectable, true)
-    #             self.item.setPos(x, y)
-    #             self.item.setWidth(50)
-    #             self.item.setHeight(50)
-    #             setText(QObject.tr("Add Ellipse"))
-    #             break
-    #         }
+        elif mode == EditMode.ModeEllipse:
+            self.item = Ellipse(self.scene)
+            self.item.setId("Ellipse")
+            self.item.setPen(QPen(Qt.black))
+            self.item.setBrush(QBrush(Qt.blue))
+            self.item.setFlag(QGraphicsItem.ItemIsMovable, True)
+            self.item.setFlag(QGraphicsItem.ItemIsSelectable, True)
+            self.item.setPos(x, y)
+            self.item.setWidth(50)
+            self.item.setHeight(50)
+            self.setText("Add Ellipse")
+
     #         case AnimationScene.EditMode.ModeText:
     #         {
     #             self.item = new Text("Lorem ipsum dolor", self.scene)
@@ -116,3 +115,29 @@ class AddItemCommand(QUndoCommand):
         self.scene.clearSelection()
         self.scene.addItem(self.item)
         #emit self.scene.itemAdded(self.item)
+
+
+class MoveItemCommand(QUndoCommand):
+    def __init__(self, x, y, oldx, oldy, scene, item):
+        QUndoCommand.__init__(self)
+        self.x = x
+        self.y = y
+        self.oldx = oldx
+        self.oldy = oldy
+        self.time = scene.playheadPosition
+        self.autokeyframes = scene.autokeyframes
+        self.autotransition = scene.autotransition
+        self.item = item
+        self.keyframeLeft = None
+        self.keyframeTop = None
+        self.setText("Move " + item.typeName)
+
+    def undo(self):
+        self.item.setPos(self.oldx, self.oldy)
+        #self.item.adjustKeyframes("left", self.oldx, self.time, self.autokeyframes, self.autotransition, self.keyframeLeft, True)
+        #self.item.adjustKeyframes("top", self.oldy, self.time, self.autokeyframes, self.autotransition, self.keyframeTop, True)
+
+    def redo(self):
+        self.item.setPos(self.x, self.y)
+        #self.item.adjustKeyframes("left", self.x, self.time, self.autokeyframes, self.autotransition, self.keyframeLeft, False)
+        #self.item.adjustKeyframes("top", self.y, self.time, self.autokeyframes, self.autotransition, self.keyframeTop, False)

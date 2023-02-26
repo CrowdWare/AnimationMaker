@@ -26,7 +26,9 @@ import resources
 
 
 class AnimationItem(QWidget, QGraphicsItem):
-    def __init__(self, scene, isSceneRect):
+    sizeChanged = Signal(float, float)
+
+    def __init__(self, scene, isSceneRect=False):
         QWidget.__init__(self)
         QGraphicsItem.__init__(self)
         self.scene = scene
@@ -81,6 +83,9 @@ class AnimationItem(QWidget, QGraphicsItem):
         # self.contextMenu.addAction(sendToBackAct)
         # self.contextMenu.addSeparator()
 
+    def setDeleted(self, mode):
+        self.deleted = mode
+
     def setScene(self, scene):
         self.scene = scene
 
@@ -91,7 +96,7 @@ class AnimationItem(QWidget, QGraphicsItem):
     def setPen(self, pen):
         self.pen = pen
         self.update()
-        #emit penChanged(m_pen.color())
+        #emit penChanged(pen.color())
 
     def setWidth(self, value):
         self.prepareGeometryChange()
@@ -108,6 +113,12 @@ class AnimationItem(QWidget, QGraphicsItem):
         self.update()
         self.setHandlePositions()
         #emit sizeChanged(rect().width(), value)
+
+    def left(self):
+        return self.scenePos().x()
+
+    def top(self):
+        return self.scenePos().y()
 
     def scaleObjects(self):
         pass
@@ -135,7 +146,6 @@ class AnimationItem(QWidget, QGraphicsItem):
     def boundingRect(self):
         return self.rect
 
-
     def drawHighlightSelected(self, painter, option):
         itemPenWidth = self.pen.widthF()
         pad = itemPenWidth / 2
@@ -151,3 +161,10 @@ class AnimationItem(QWidget, QGraphicsItem):
         painter.setPen(QPen(option.palette.windowText(), 0, Qt.DashLine))
         painter.setBrush(Qt.NoBrush)
         painter.drawRect(self.boundingRect().adjusted(pad, pad, -pad, -pad))
+
+    def setRect(self, x: float, y: float, w: float, h: float):
+        self.prepareGeometryChange()
+        self.rect = QRectF(x, y, w, h)
+        self.update()
+        if self.scene:
+            self.sizeChanged.emit(w, h)

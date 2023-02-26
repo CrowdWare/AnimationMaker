@@ -19,8 +19,10 @@
 #############################################################################
 from widgets.enums import EditMode
 from widgets.rectangle import Rectangle
+from widgets.ellipse import Ellipse
+from widgets.animationitem import AnimationItem
 from widgets.itemhandle import ItemHandle
-from widgets.commands import AddItemCommand
+from widgets.commands import AddItemCommand, MoveItemCommand
 from PySide6.QtWidgets import QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene, QGraphicsItem
 from PySide6.QtCore import Signal, Qt, QUrl, QPointF, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
 from PySide6.QtQml import QQmlEngine, QQmlComponent
@@ -35,7 +37,7 @@ class AnimationScene(QGraphicsScene):
         self.blackSelectionRect = None
         self.whiteSelectionRect = None
         self.autokeyframes = False
-        self.autotransitions = False
+        self.autotransition = False
         self.initialize()
 
     def registerUndoStack(self, undostack):
@@ -133,19 +135,19 @@ class AnimationScene(QGraphicsScene):
             self.addItem(r)
             #emit itemAdded(r)
             
-        # elif self.copy.type() == Ellipse.Type:
-        #     e = Ellipse(self)
-        #     e.setPos(self.copy.pos().x() + 10, self.copy.pos().y() + 10)
-        #     e.setWidth(self.copy.rect().width())
-        #     e.setHeight(self.copy.rect().height())
-        #     e.setId("Ellipse")
-        #     e.setPen(self.copy.pen())
-        #     e.setBrush(self.copy.brush())
-        #     e.setFlag(QGraphicsItem::ItemIsMovable, true)
-        #     e.setFlag(QGraphicsItem::ItemIsSelectable, true)
-        #     self.copyKeyframes(e)
-        #     self.addItem(e)
-        #     #emit itemAdded(e)
+        elif self.copy.type() == Ellipse.Type:
+            e = Ellipse(self)
+            e.setPos(self.copy.pos().x() + 10, self.copy.pos().y() + 10)
+            e.setWidth(self.copy.rect().width())
+            e.setHeight(self.copy.rect().height())
+            e.setId("Ellipse")
+            e.setPen(self.copy.pen())
+            e.setBrush(self.copy.brush())
+            e.setFlag(QGraphicsItem.ItemIsMovable, True)
+            e.setFlag(QGraphicsItem.ItemIsSelectable, True)
+            self.copyKeyframes(e)
+            self.addItem(e)
+            #emit itemAdded(e)
             
             
         # elif self.copy.type() == Text.Type:
@@ -192,17 +194,11 @@ class AnimationScene(QGraphicsScene):
     def deleteItem(self, item):
         pass
 
-    def autokeyframes(self):
-        return self.autokeyframes
-
     def setAutokeyframes(self, value):
         self.autokeyframes = value
 
-    def autotransition(self):
-        return self.autotransitions
-
     def setAutotransition(self, value):
-        self.autotransitions = value
+        self.autotransition = value
 
     def undoStack(self):
         return self.undoStack
@@ -235,7 +231,8 @@ class AnimationScene(QGraphicsScene):
             mousePos = QPointF(mouseEvent.buttonDownScenePos(Qt.LeftButton).x(), mouseEvent.buttonDownScenePos(Qt.LeftButton).y())
             itemList = self.items(mousePos)
             for item in itemList:
-                if item is ItemHandle:
+                if isinstance(item, ItemHandle):
+                    handle = item
                     break
                 self.movingItem = item
                 if self.movingItem and self.movingItem.isSceneRect:
@@ -250,8 +247,8 @@ class AnimationScene(QGraphicsScene):
                 self.blackSelectionRect.setPos(mousePos)
                 self.whiteSelectionRect = self.addRect(1, 1, 1, 1, QPen(QColor("#ffffff")))
                 self.whiteSelectionRect.setPos(mousePos)
-            #QGraphicsScene.mousePressEvent(mouseEvent)
-            
+
+            super().mousePressEvent(mouseEvent)
         else:
             addCommand = AddItemCommand(mouseEvent.scenePos().x(), mouseEvent.scenePos().y(), self.editMode, None, self)
             self.undoStack.push(addCommand)
@@ -260,7 +257,7 @@ class AnimationScene(QGraphicsScene):
         if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
             self.blackSelectionRect.setRect(0, 0, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
             self.whiteSelectionRect.setRect(1, 1, mouseEvent.lastScenePos().x() - self.blackSelectionRect.pos().x(), mouseEvent.lastScenePos().y() - self.blackSelectionRect.pos().y())
-        #QGraphicsScene.mouseMoveEvent(mouseEvent)
+        super().mousePressEvent(mouseEvent)
 
     def mouseReleaseEvent(self,  mouseEvent):
         if self.editMode == EditMode.ModeSelect and self.blackSelectionRect:
@@ -274,30 +271,30 @@ class AnimationScene(QGraphicsScene):
             del self.whiteSelectionRect
             self.blackSelectionRect = None
 
-        #if self.movingItem and mouseEvent.button() == Qt.LeftButton:
-        #    if self.oldPos != self.movingItem.pos():
-        #        cmd = MoveItemCommand(self.movingItem.x(), self.movingItem.y(), self.oldPos.x(), self.oldPos.y(), self, self.movingItem)
-        #        self.undoStack.push(cmd)
-        #    self.movingItem = None
-        #QGraphicsScene.mouseReleaseEvent(mouseEvent)
+        if self.movingItem and mouseEvent.button() == Qt.LeftButton:
+            if self.oldPos != self.movingItem.pos():
+                cmd = MoveItemCommand(self.movingItem.x(), self.movingItem.y(), self.oldPos.x(), self.oldPos.y(), self, self.movingItem)
+                self.undoStack.push(cmd)
+            self.movingItem = None
+        super().mousePressEvent(mouseEvent)
 
     def keyPressEvent(self, e):
         if len(self.selectedItems()) == 0:
              return
 
-        # itemList = self.selectedItems()
-        # for item in itemList:
-        #     if item is AnimationItem:
-        #         if not item.isSceneRect():
-        #             if e.key()== Qt.Key_Left:
-        #                 cmd = MoveItemCommand(item.x() - 1, item.y(), item.x(), item.y(), self, item)
-        #                 self.undoStack.push(cmd)
-        #             elif e.key() == Qt.Key_Right:
-        #                 cmd = MoveItemCommand(item.x() + 1, item.y(), item.x(), item.y(), self, item)
-        #                 self.undoStack.push(cmd)
-        #             elif e.key() == Qt.Key_Up:
-        #                 cmd = MoveItemCommand(item.x(), item.y() - 1, item.x(), item.y(), self, item)
-        #                 self.undoStack.push(cmd)
-        #             elif e.key() == Qt.Key_Down:
-        #                 cmd = MoveItemCommand(item.x(), item.y() + 1, item.x(), item.y(), self, item)
-        #                 self.undoStack.push(cmd)
+        itemList = self.selectedItems()
+        for item in itemList:
+            if isinstance(item, AnimationItem):
+                if not item.isSceneRect:
+                    if e.key()== Qt.Key_Left:
+                        cmd = MoveItemCommand(item.left() - 1, item.top(), item.left(), item.top(), self, item)
+                        self.undoStack.push(cmd)
+                    elif e.key() == Qt.Key_Right:
+                        cmd = MoveItemCommand(item.left() + 1, item.top(), item.left(), item.top(), self, item)
+                        self.undoStack.push(cmd)
+                    elif e.key() == Qt.Key_Up:
+                        cmd = MoveItemCommand(item.left(), item.top() - 1, item.left(), item.top(), self, item)
+                        self.undoStack.push(cmd)
+                    elif e.key() == Qt.Key_Down:
+                        cmd = MoveItemCommand(item.left(), item.top() + 1, item.left(), item.top(), self, item)
+                        self.undoStack.push(cmd)

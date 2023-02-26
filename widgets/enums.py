@@ -37,3 +37,12 @@ class EditMode(Enum):
     ModeBitmap = 4
     ModeSvg = 5
     ModePlugin = 6
+
+class MouseState(Enum):
+    kMouseReleased = 0
+    kMouseDown = 1 
+    kMouseMoving = 2
+
+class RulerType(Enum):
+    Horizontal = 0
+    Vertical = 1

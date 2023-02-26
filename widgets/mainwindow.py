@@ -31,6 +31,10 @@ from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGro
 import resources
 
 class MainWindow(QMainWindow):
+    enableSave = Signal(bool)
+    enableSaveItem = Signal(bool)
+    setChecked = Signal(bool)
+
     def __init__(self):
         QMainWindow.__init__(self)
         self.undoStack = QUndoStack(self)
@@ -61,14 +65,15 @@ class MainWindow(QMainWindow):
 
         newAct = QAction("&New", self)
         newAct.setShortcut(QKeySequence.New)
-        # connect(Act, SIGNAL(triggered()), self, SLOT(file()))
+        newAct.triggered.connect(self.newfile)
         self.fileMenuActions.append(newAct)
 
         saveAct = QAction("&Save", self)
         saveAct.setEnabled(False)
         saveAct.setShortcut(QKeySequence.Save)
         saveAct.triggered.connect(self.save)
-        # connect(self, SIGNAL(enableSave(bool)), saveAct, SLOT(setEnabled(bool)))
+        self.enableSave.connect(saveAct.setEnabled)
+
         self.fileMenuActions.append(saveAct)
 
         saveAsAct = QAction("Save &As...", self)
@@ -78,8 +83,8 @@ class MainWindow(QMainWindow):
 
         saveItemAsAct = QAction("Save &Item as...", self)
         saveItemAsAct.setEnabled(False)
-        # connect(saveItemAsAct, SIGNAL(triggered()), self, SLOT(saveItemAs()))
-        # connect(self, SIGNAL(enableSaveItem(bool)), saveItemAsAct, SLOT(setEnabled(bool)))
+        saveItemAsAct.triggered.connect(self.saveItemAs)
+        self.enableSaveItem.connect(saveItemAsAct.setEnabled)
         self.fileMenuActions.append(saveItemAsAct)
 
         self.exportMovieAct = QAction("Export Movie", self)
@@ -88,7 +93,7 @@ class MainWindow(QMainWindow):
         self.exitAct = QAction("E&xit", self)
         self.exitAct.setShortcuts(QKeySequence.Quit)
         self.exitAct.setStatusTip("Exit the application")
-        # connect(exitAct, SIGNAL(triggered()), self, SLOT(close()))
+        self.exitAct.triggered.connect(self.close)
 
         undoAct = self.undoStack.createUndoAction(self, "&Undo")
         undoAct.setShortcuts(QKeySequence.Undo)
@@ -100,36 +105,36 @@ class MainWindow(QMainWindow):
 
         copyAct = QAction("&Copy", self)
         copyAct.setShortcuts(QKeySequence.Copy)
-        #connect(copyAct, SIGNAL(triggered()), self, SLOT(copy()))
+        copyAct.triggered.connect(self.copy)
         self.editMenuActions.append(copyAct)
 
         pasteAct = QAction("&Paste", self)
         pasteAct.setShortcuts(QKeySequence.Paste)
-        # connect(pasteAct, SIGNAL(triggered()), self, SLOT(paste()))
+        pasteAct.triggered.connect(self.paste)
         self.editMenuActions.append(pasteAct)
 
         delAct = QAction("&Delete", self)
         delAct.setShortcut(QKeySequence.Delete)
-        # connect(delAct, SIGNAL(triggered()), self, SLOT(del()))
+        delAct.triggered.connect(self.delete)
         self.editMenuActions.append(delAct)
 
         showElementsAct = QAction("Elements", self)
-        # connect(showElementsAct, SIGNAL(triggered()), self, SLOT(showElementsPanel()))
+        showElementsAct.triggered.connect(self.showElementsPanel)
         self.viewMenuActions.append(showElementsAct)
 
         showPropertyPanelAct = QAction("Properties", self)
-        # connect(showPropertyPanelAct, SIGNAL(triggered()), self, SLOT(showPropertyPanel()))
+        showPropertyPanelAct.triggered.connect(self.showPropertyPanel)
         self.viewMenuActions.append(showPropertyPanelAct)
 
         showToolPanelAct = QAction("Tools", self)
-        # connect(showToolPanelAct, SIGNAL(triggered()), self, SLOT(showToolPanel()))
+        showToolPanelAct.triggered.connect(self.showToolPanel)
         self.viewMenuActions.append(showToolPanelAct)
 
-        showRulerAct = QAction("Rulers", self)
-        showRulerAct.setCheckable(True)
-        showRulerAct.setChecked(True)
-        # connect(showRulerAct, SIGNAL(triggered(bool)), self, SLOT(showRuler(bool)))
-        self.viewMenuActions.append(showRulerAct)
+        self.showRulerAct = QAction("Rulers", self)
+        self.showRulerAct.setCheckable(True)
+        self.showRulerAct.setChecked(True)
+        self.showRulerAct.triggered.connect(self.showRuler)
+        self.viewMenuActions.append(self.showRulerAct)
 
         self.aboutAct = QAction("&About", self)
         self.aboutAct.triggered.connect(self.about)
@@ -182,7 +187,7 @@ class MainWindow(QMainWindow):
         self.selectAct = QAction("Select", anActionGroup)
         self.selectAct.setIcon(QIcon(":/images/arrow.png"))
         self.selectAct.setCheckable(True)
-        #self.selectAct.setChecked.connect(self.setChecked)
+        self.setChecked.connect(self.selectAct.setChecked)
 
         self.rectangleAct = QAction("Rectangle", anActionGroup)
         self.rectangleAct.setIcon(QIcon(":/images/rectangle.png"))
@@ -353,6 +358,7 @@ class MainWindow(QMainWindow):
         settings.setValue('pos', self.pos())
         settings.setValue('size', self.size())
         settings.setValue("state", self.saveState())
+        settings.setValue("rulers", "True" if self.showRulerAct.isChecked() else "False")
 
     def readSettings(self):
         settings = QSettings(QSettings.IniFormat, QSettings.UserScope,  QCoreApplication.organizationName(), QCoreApplication.applicationName())
@@ -361,9 +367,9 @@ class MainWindow(QMainWindow):
         self.move(pos)
         self.resize(size)
         self.restoreState(settings.value("state"))
-        #self.showRulers = settings.value("rulers", "True").toBool()
-        #if not showRulers:
-        #    emit showRulerAct.toggled(False)
+        self.showRulers = settings.value("rulers", "True")
+        if self.showRulers != "True":
+            self.showRulerAct.toggled.emit(False)
 
     def open(self):
         pass
@@ -383,7 +389,6 @@ class MainWindow(QMainWindow):
         )
         msg.setIconPixmap(QPixmap(":/images/logo.png"))
         msg.exec()
-
 
     def save(self):
         self.writeFile(self.loadedFile.filePath())
@@ -409,7 +414,7 @@ class MainWindow(QMainWindow):
 
         self.writeFile(fileName)
         self.loadedFile.setFile(fileName)
-        #emit this.enableSave(True)
+        self.enableSave.emit(True)
         self.setTitle()
         return True
 
@@ -579,4 +584,27 @@ class MainWindow(QMainWindow):
 
             if not filename == "":
                 self.scene.addNewImage(filename, mode)
+
+    def showRuler(self, checked):
+        self.view.showRulers(checked)
+
+    def copy(self):
+        pass
+
+    def paste(self):
+        pass
+
+    def delete(self):
+        pass
+
+    def showElementsPanel(self):
+        pass
+
+    def showPropertyPanel(self):
+        pass
+
+    def showToolPanel(self):
+        pass
+
+
 
