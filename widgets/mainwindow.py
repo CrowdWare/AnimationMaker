@@ -17,17 +17,18 @@
 #  along with AnimationMaker.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from widgets.animationscene import AnimationScene, EditMode
+from widgets.animationscene import EditMode, AnimationScene
+from widgets.scene import Scene
 from widgets.animationitem import AnimationItem
 from widgets.timeline import Timeline
 from widgets.itempropertyeditor import ItemPropertyEditor
 from widgets.scenepropertyeditor import ScenePropertyEditor
-from widgets.sceneview import SceneView
+from widgets.qmlsceneview import QmlSceneView
 from widgets.transitioneditor import TransitionEditor
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QScrollArea, QSplitter, QComboBox, QDockWidget, QApplication, QMenu, QToolBar
-from PySide6.QtCore import QFileInfo, Signal, Qt, QUrl, QRect, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
+from PySide6.QtWidgets import QSizePolicy, QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QSplitter, QComboBox, QDockWidget, QMenu, QToolBar
+from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QUrl, QSettings, QEvent, QSize, QPoint, QIODevice, QFile, QDir, QEventLoop, QThread, QProcess
+from PySide6.QtGui import QUndoStack, QAction, QKeySequence, QActionGroup, QIcon, QPixmap, QImage, QCursor, QImageReader
 from PySide6.QtQml import QQmlEngine, QQmlComponent
-from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QPainter, QPixmap, QImage, QCursor, QImageReader
 import resources
 
 class MainWindow(QMainWindow):
@@ -243,7 +244,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.tooldock)
 
         self.scene = AnimationScene()
-        self.scene.registerUndoStack(self.undoStack)
+        #self.scene.registerUndoStack(self.undoStack)
 
         self.timeline = Timeline(self.scene)
         self.timeline.setMinimumHeight(110)
@@ -262,14 +263,16 @@ class MainWindow(QMainWindow):
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.propertiesdock)
 
-        self.view = SceneView(self.scene)
-        self.view.setSceneRect(-100, -100, self.scene.width() + 200, self.scene.height() + 200)
-        self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        #self.view = SceneView(self.scene)
+        #self.view.setSceneRect(-100, -100, self.scene.width() + 200, self.scene.height() + 200)
+        #self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
         # connect(self.scene, SIGNAL(selectionChanged()), this, SLOT(sceneSelectionChanged()))
         # connect(self.scene, SIGNAL(itemAdded(QGraphicsItem*)), this, SLOT(sceneItemAdded(QGraphicsItem*)))
         # connect(self.scene, SIGNAL(sizeChanged(int,int)), this, SLOT(sceneSizeChanged(int, int)))
         # connect(self.scene, SIGNAL(itemRemoved(AnimationItem*)), this, SLOT(sceneItemRemoved(AnimationItem*)))
         # connect(self.scene, SIGNAL(animationResetted()), this, SLOT(reset()))
+
+        self.view = QmlSceneView()
 
         w = QWidget()
         vbox = QVBoxLayout()
@@ -322,9 +325,9 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.writeSettings()
 
-        if not self.scene.isChanged:
-            event.accept()
-            return
+        #if not self.scene.isChanged():
+        #    event.accept()
+        return
 
         save = QMessageBox()
         save.setText("The project has been modified.")
@@ -372,10 +375,137 @@ class MainWindow(QMainWindow):
             self.showRulerAct.toggled.emit(False)
 
     def open(self):
-        pass
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setNameFilter("AnimationMaker Markup(*.aml);;All Files (*)")
+        dialog.setWindowTitle("Open Animation")
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        if dialog.exec():
+            fileName = dialog.selectedFiles()[0]
+        del dialog
+        if not fileName:
+            return
+
+        self.view.load(fileName)
+
+
+        #fullyLoaded = self.scene.load(fileName)
+
+        #self.fillTree()
+        # m_elementTree->expandAll();
+        # m_scenePropertyEditor->setScene(m_scene);
+        # m_timeline->expandTree();
+
+        # if(fullyLoaded)
+        # {
+        #     loadedFile.setFile(fileName);
+        #     emit this->enableSave(true);
+        #     setTitle();
+        # }
+        # m_timeline->setPlayheadPosition(0);
     
     def exportMovie(self):
-        print("Export")
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setNameFilter("Video format (*.mpg *.mp4 *.avi *.gif);;All Files (*)")
+        dialog.setWindowTitle("Export Animation to Movie")
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        if dialog.exec():
+            fileName = dialog.selectedFiles()[0]
+        del dialog
+        if not fileName:
+            return
+        
+        tmp = QDir.temp()
+        tmp.mkdir("animationmaker")
+        tmp.cd("animationmaker")
+
+        frames = 60
+        delay = 1000 / self.scene.fps
+
+        try:
+            with open(tmp.absolutePath() + "/list", "w", encoding="utf-8") as list:
+                for i in range(frames):
+                    self.statusBar().showMessage("Writing frame " + str(i) + " of " + str(frames) + " frames")
+
+                    #m_timeline->setPlayheadPosition(i * delay);
+
+                    QThread.msleep(10)
+                    QCoreApplication.processEvents(QEventLoop.AllEvents, delay)
+
+                    image = self.view.grabImage()            
+                    imgName = tmp.absolutePath() + "/frame" + str(i) + ".png" 
+                    print(imgName)
+                    image.save(imgName)
+                    entry = "file frame" + str(i) + ".png\n"
+                    list.write(entry)
+            
+                list.close()
+        except:
+            QMessageBox.warning(self, "Error", "Unable to create list file")
+            return
+
+        self.statusBar().showMessage("Creating movie file")
+
+        args = []
+        if fileName.endswith(".gif"):
+            output = tmp.absolutePath() + "/temp.mp4"
+            self.statusBar().showMessage("Creating temp movie")
+            args = ["-r", str(self.scene.fps), "-safe", "0", "-f", "concat", "-i", "list", "-b:v", "4M", output]
+            self.runExport(args, tmp.absolutePath())
+            self.statusBar().showMessage("Creating palette file")
+            args = ["-i", output, "-vf", "palettegen", "-y", tmp.absolutePath() + "/temp.png"]
+            self.runExport(args, tmp.absolutePath())
+            self.statusBar().showMessage("Converting temp movie")
+            args = ["-r", str(self.scene.fps), "-i", output, "-i", tmp.absolutePath() + "/temp.png", "-filter_complex", "[0:v][1:v]paletteuse", fileName]
+            self.runExport(args, tmp.absolutePath())
+        else:
+            self.statusBar().showMessage("Creating movie file")
+            args = ["-r", str(self.scene.fps), "-safe", "0", "-f", "concat", "-i", "list", "-b:v", "4M", fileName]
+            self.runExport(args, tmp.absolutePath())
+
+        tmp.removeRecursively()
+        self.statusBar().showMessage("Ready")
+
+    def runExport(self, args, path):
+        # check first that the FFMPEG is installed.
+        proc = QProcess()
+        proc.start("ffmpeg", {"-version"})
+        proc.waitForStarted(300)
+        proc.waitForFinished(300)
+        if proc.error() == QProcess.FailedToStart:
+            missing = QMessageBox()
+            missing.setIcon(QMessageBox.Warning)
+            missing.setWindowTitle("Missing dependency")
+            missing.setText("The program FFMPEG is mandatory in order to export the animation\n"
+                            "Please install it first. No animation has been created")
+            missing.exec()
+            del proc
+            return
+        
+
+        # Show all errors
+        proc = QProcess()
+        args.append("-y")
+        args.append("-loglevel")
+        args.append("error")
+        proc.setWorkingDirectory(path)
+        proc.start("ffmpeg", args)
+        proc.waitForFinished(-1)
+        exitCode = proc.exitCode()
+        if proc.error() != QProcess.UnknownError or exitCode != 0:
+            failure = QMessageBox() 
+            failure.setIcon(QMessageBox.Critical)
+            failure.setWindowTitle("Oups... Something happened")
+            failure.setText("FFMPEG encountered an error.\nExit code: " + str(exitCode))
+            failure.setDetailedText(str(proc.readAllStandardError()))
+            failure.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            failure.setBaseSize(600, 400)
+            failure.exec()
+
+        del proc
 
     def about(self):
         msg = QMessageBox()
@@ -401,11 +531,11 @@ class MainWindow(QMainWindow):
         fileName = ""
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker XML (*.amx)All Files (*)")
+        dialog.setNameFilter("AnimationMaker (*.aml)All Files (*)")
         dialog.setWindowTitle("Save Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
-        dialog.setDefaultSuffix("amx")
+        dialog.setDefaultSuffix("aml")
         if dialog.exec():
             fileName = dialog.selectedFiles()[0]
         del dialog
@@ -422,11 +552,11 @@ class MainWindow(QMainWindow):
         fileName = ""
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker XML (*.amx)All Files (*)")
+        dialog.setNameFilter("AnimationMaker (*.aml)All Files (*)")
         dialog.setWindowTitle("Save Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
-        dialog.setDefaultSuffix("amx")
+        dialog.setDefaultSuffix("aml")
         if dialog.exec():
             fileName = dialog.selectedFiles().first()
         del dialog
@@ -465,48 +595,21 @@ class MainWindow(QMainWindow):
         self.scenePropertyEditor.setScene(self.scene)
         self.propertiesdock.setWidget(self.scenePropertyEditor)
 
-    def open(self):
-        fileName = ""
-        dialog = QFileDialog()
-        dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker (*.amx)All Files (*)")
-        dialog.setWindowTitle("Open Animation")
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        if dialog.exec():
-            fileName = dialog.selectedFiles()[0]
-        del dialog
-        if fileName == "":
-            return
-
-        fullyLoaded = self.scene.importXml(fileName)
-
-        self.fillTree()
-        self.elementTree.expandAll()
-        self.scenePropertyEditor.setScene(self.scene)
-        self.timeline.expandTree()
-
-        if fullyLoaded:
-            self.loadedFile.setFile(fileName)
-            #emit this.enableSave(True)
-            self.setTitle()
-        self.timeline.setPlayheadPosition(0)
-
     def fillTree(self):
         for i in reversed(range(self.root.childCount() - 1)) :
             treeItem = self.root.child(i)
             self.root.removeChild(treeItem)
             del treeItem
 
-        itemList = self.scene.items(Qt.AscendingOrder)
-        for item in itemList:
-            if item is AnimationItem and not item.isSceneRect():
-                treeItem = QTreeWidgetItem()
-                treeItem.setText(0, item.id())
-                treeItem.setIcon(0, QIcon(":/images/rect.png"))
-                treeItem.setData(0,  Qt.ToolTipRole, item)
-                self.root.addChild(treeItem)
-                self.addCheckboxes(treeItem, item)
+        # itemList = self.scene.items(Qt.AscendingOrder)
+        # for item in itemList:
+        #     if item is AnimationItem and not item.isSceneRect():
+        #         treeItem = QTreeWidgetItem()
+        #         treeItem.setText(0, item.id())
+        #         treeItem.setIcon(0, QIcon(":/images/rect.png"))
+        #         treeItem.setData(0,  Qt.ToolTipRole, item)
+        #         self.root.addChild(treeItem)
+        #         self.addCheckboxes(treeItem, item)
                 #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
 
     def idChanged(self, item, id):

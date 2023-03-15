@@ -30,7 +30,6 @@ from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGro
 import resources
 
 
-
 class AnimationScene(QGraphicsScene):
     def __init__(self):
         QGraphicsScene.__init__(self)
@@ -40,6 +39,9 @@ class AnimationScene(QGraphicsScene):
         self.autokeyframes = False
         self.autotransition = False
         self.initialize()
+
+    def load(self, filename):
+        print("loading", filename)
 
     def registerUndoStack(self, undostack):
         self.undoStack = undostack

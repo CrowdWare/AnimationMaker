@@ -18,16 +18,13 @@
 #
 #############################################################################
 
-from widgets.animationitem import AnimationItem
 from widgets.enums import RulerType
-from PySide6.QtWidgets import QStyle, QMessageBox, QVBoxLayout, QMainWindow, QWidget, QScrollArea, QDockWidget, QApplication, QMenu, QToolBar, QGraphicsScene
-from PySide6.QtCore import Signal, Qt, QUrl, QRect, QRectF, QCoreApplication, QDir, QSettings, QByteArray, QEvent, QSize, QPoint, QAbstractAnimation, QPropertyAnimation
-from PySide6.QtQml import QQmlEngine, QQmlComponent
-from PySide6.QtGui import QUndoStack, QScreen, QAction, QKeySequence, QActionGroup, QIcon, QFont, QPen, QPainter
-import resources
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QRectF, QPoint
+from PySide6.QtGui import QFont, QPen, QPainter
 
 class Ruler(QWidget):
-    def __init__(self, rulerType, parent=None):
+    def __init__(self, rulerType):
         QWidget.__init__(self)
         self.rulerType = rulerType
         self.origin = 0.
@@ -81,8 +78,11 @@ class Ruler(QWidget):
         widgetWidth = rulerRect.width() if self.rulerType == RulerType.Horizontal else rulerRect.height()
         scaledLength = self.scaledRect.width() if self.rulerType == RulerType.Horizontal else self.scaledRect.height()
         minScaledVal = self.scaledRect.left() if self.rulerType == RulerType.Horizontal else self.scaledRect.top()
-
-        a = widgetWidth / scaledLength
+        
+        if scaledLength == 0:
+            a = widgetWidth
+        else:
+            a = widgetWidth / scaledLength
         b = -(a * minScaledVal)
 
         unit = 0.0001
@@ -102,7 +102,6 @@ class Ruler(QWidget):
 
             self.drawFromOrigin(painter, rulerRect, b, 0, widgetWidth, unit * tickFact, unitSize * tickFact, tickFact)
             self.drawFromOrigin(painter, rulerRect, b, widgetWidth, widgetWidth, unit * tickFact, unitSize * tickFact, tickFact)
-
 
     def drawFromOrigin(self, painter, rulerRect, origin, until, widgetWidth, unit, unitSize, tickFact):
         sens = origin < until

@@ -9,3 +9,4 @@ main.spec
 *_rc.py
 AnimationMaker-*
 resources.py
+qmltest/

@@ -139,5 +139,6 @@ class MoveItemCommand(QUndoCommand):
 
     def redo(self):
         self.item.setPos(self.x, self.y)
+        print("move")
         #self.item.adjustKeyframes("left", self.x, self.time, self.autokeyframes, self.autotransition, self.keyframeLeft, False)
         #self.item.adjustKeyframes("top", self.y, self.time, self.autokeyframes, self.autotransition, self.keyframeTop, False)

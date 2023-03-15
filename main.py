@@ -20,9 +20,11 @@
 import sys
 import os
 from widgets.mainwindow import MainWindow
+from widgets.scene import Scene
 from PySide6.QtWidgets import QApplication, QStyleFactory
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QPalette, QColor, QIcon, QFont
+from PySide6.QtQml import qmlRegisterType
 import main_rc
 
 
@@ -34,6 +36,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create("Fusion"))
     
+    qmlRegisterType(Scene, 'AnimationMaker', 2, 0, 'Scene')
+
     font = QFont("Sans Serif", 10)
     app.setFont(font)
 
