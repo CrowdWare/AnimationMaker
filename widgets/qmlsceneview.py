@@ -54,8 +54,8 @@ class QmlSceneView(QWidget):
 
     def load(self, filename):
         self.view.setSource(QUrl.fromLocalFile(filename))
-        root = self.view.rootObject()
-        print(root)
+        self.scene = self.view.rootObject()
+        return self.scene
 
     def showRulers(self, mode):
         #self.setViewportMargins(mode * 20, mode * 20, 0, 0)

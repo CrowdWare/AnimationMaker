@@ -19,6 +19,7 @@
 #############################################################################
 from PySide6.QtCore import Property
 from PySide6.QtQuick import QQuickItem
+from PySide6.QtQml import QQmlProperty
 
 
 class Scene(QQuickItem):
@@ -62,3 +63,10 @@ class Scene(QQuickItem):
 
     def isChanged(self):
         return self._isChanged
+    
+    def setPlayheadPosition(self, pos):
+        # simulate animation
+        for item in self.childItems():
+            x = QQmlProperty(item, "x")
+            val = x.read()
+            x.write(val + 2)

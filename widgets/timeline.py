@@ -27,9 +27,9 @@ import resources
 
 
 class Timeline(QWidget):
-    def __init__(self, scene):
+    def __init__(self):
         QWidget.__init__(self)
-        self.scene = scene
+        self.scene = None
         self.horizontalScrollPos = 0
         hbox = QHBoxLayout()
         revertButton = QToolButton()
@@ -112,16 +112,37 @@ class Timeline(QWidget):
         self.delAct = QAction("Delete", self)
 
         #connect(self.tree, SIGNAL(customContextMenuRequested(const QPoint &)), self, SLOT(onCustomContextMenu(const QPoint &)))
-        #connect(self.playhead, SIGNAL(valueChanged(int)), self, SLOT(playheadValueChanged(int)))
+        self.playhead.valueChanged.connect(self.playheadValueChanged)
         #connect(self.sb, SIGNAL(valueChanged(int)), self.playhead, SLOT(scrollValueChanged(int)))
         #connect(self.sb, SIGNAL(valueChanged(int)), self, SLOT(scrollValueChanged(int)))
         #connect(self.tree, SIGNAL(currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)), self, SLOT(treeCurrentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)))
         #connect(self.playhead, SIGNAL(valueChanged(int)), scene, SLOT(setPlayheadPosition(int)))
         #connect(self.scene, SIGNAL(keyframeAdded(AnimationItem*, QString, KeyFrame*)), self, SLOT(keyframeAdded(AnimationItem*, QString, KeyFrame*)))
 
+    def setScene(self, scene):
+        self.scene = scene
 
     def setPlayheadPosition(self, pos):
-        pass
+        self.playhead.setValue(pos)
 
     def reset(self):
         pass
+
+    def playheadValueChanged(self, value):
+        #self.time.setText(Timeline.timeString(value))
+        #m_scene->clearSelection();
+        self.scene.setPlayheadPosition(value)
+
+        # for(int i=0; i < m_tree->topLevelItemCount(); i++)
+        # {
+        #     QTreeWidgetItem *treeItem = m_tree->topLevelItem(i);
+        #     TransitionLine *line = dynamic_cast<TransitionLine*>(m_tree->itemWidget(treeItem, 1));
+        #     line->setPlayheadPosition(val);
+
+        #     for(int j = 0; j < treeItem->childCount(); j++)
+        #     {
+        #         QTreeWidgetItem *cTreeItem = treeItem->child(j);
+        #         TransitionLine *line = dynamic_cast<TransitionLine*>(m_tree->itemWidget(cTreeItem, 1));
+        #         line->setPlayheadPosition(val);
+        #     }
+        # }

@@ -28,6 +28,7 @@ import resources
 #define VALUE_OFFSET 5
 
 class PlayHead(QWidget):
+    valueChanged = Signal(int)
     def __init__(self):
         QWidget.__init__(self)
         self.image = QImage(":/images/playhead.png")
@@ -61,3 +62,8 @@ class PlayHead(QWidget):
         painter.fillRect(0, 22, width, height, gray)
         painter.drawRect(0, 22, width - 1, height - 1)
         painter.drawImage(self.value / 5 - 4 - offset, 17, self.image)
+
+    def setValue(self, value):
+        self.value = value
+        self.update() 
+        self.valueChanged.emit(value)

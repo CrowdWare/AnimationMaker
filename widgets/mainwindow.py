@@ -246,7 +246,7 @@ class MainWindow(QMainWindow):
         self.scene = AnimationScene()
         #self.scene.registerUndoStack(self.undoStack)
 
-        self.timeline = Timeline(self.scene)
+        self.timeline = Timeline()
         self.timeline.setMinimumHeight(110)
 
         self.itemPropertyEditor = ItemPropertyEditor(self.timeline)
@@ -387,7 +387,8 @@ class MainWindow(QMainWindow):
         if not fileName:
             return
 
-        self.view.load(fileName)
+        self.scene = self.view.load(fileName)
+        self.timeline.setScene(self.scene)
 
 
         #fullyLoaded = self.scene.load(fileName)
@@ -430,14 +431,13 @@ class MainWindow(QMainWindow):
                 for i in range(frames):
                     self.statusBar().showMessage("Writing frame " + str(i) + " of " + str(frames) + " frames")
 
-                    #m_timeline->setPlayheadPosition(i * delay);
+                    self.timeline.setPlayheadPosition(i * delay)
 
                     QThread.msleep(10)
                     QCoreApplication.processEvents(QEventLoop.AllEvents, delay)
 
                     image = self.view.grabImage()            
                     imgName = tmp.absolutePath() + "/frame" + str(i) + ".png" 
-                    print(imgName)
                     image.save(imgName)
                     entry = "file frame" + str(i) + ".png\n"
                     list.write(entry)
@@ -484,9 +484,7 @@ class MainWindow(QMainWindow):
             missing.exec()
             del proc
             return
-        
 
-        # Show all errors
         proc = QProcess()
         args.append("-y")
         args.append("-loglevel")
