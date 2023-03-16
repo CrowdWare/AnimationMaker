@@ -25,10 +25,10 @@ from widgets.itempropertyeditor import ItemPropertyEditor
 from widgets.scenepropertyeditor import ScenePropertyEditor
 from widgets.qmlsceneview import QmlSceneView
 from widgets.transitioneditor import TransitionEditor
-from PySide6.QtWidgets import QSizePolicy, QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QSplitter, QComboBox, QDockWidget, QMenu, QToolBar
+from PySide6.QtWidgets import QCheckBox, QSizePolicy, QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QSplitter, QComboBox, QDockWidget, QMenu, QToolBar
 from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QUrl, QSettings, QEvent, QSize, QPoint, QIODevice, QFile, QDir, QEventLoop, QThread, QProcess
 from PySide6.QtGui import QUndoStack, QAction, QKeySequence, QActionGroup, QIcon, QPixmap, QImage, QCursor, QImageReader
-from PySide6.QtQml import QQmlEngine, QQmlComponent
+from PySide6.QtQml import QQmlEngine, QQmlComponent, QQmlProperty
 import resources
 
 class MainWindow(QMainWindow):
@@ -302,7 +302,7 @@ class MainWindow(QMainWindow):
         self.elementTree.setColumnWidth(2, 18)
         self.elementTree.header().moveSection(0,2)
         self.elementTree.addTopLevelItem(self.root)
-        # connect(self.elementTree, SIGNAL(currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)), this, SLOT(elementTreeItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)))
+        self.elementTree.currentItemChanged.connect(self.elementTreeItemChanged)
 
         self.elementsdock = QDockWidget("Elements", self)
         self.elementsdock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
@@ -377,7 +377,7 @@ class MainWindow(QMainWindow):
     def open(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker Markup(*.aml);;All Files (*)")
+        dialog.setNameFilter("AnimationMaker Markup(*.aml)All Files (*)")
         dialog.setWindowTitle("Open Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -388,28 +388,23 @@ class MainWindow(QMainWindow):
             return
 
         self.scene = self.view.load(fileName)
-        self.timeline.setScene(self.scene)
+        if self.scene:
+            self.timeline.setScene(self.scene)
 
+            self.fillTree()
+            # m_elementTree.expandAll()
+            # m_scenePropertyEditor.setScene(m_scene)
+            # m_timeline.expandTree()
 
-        #fullyLoaded = self.scene.load(fileName)
-
-        #self.fillTree()
-        # m_elementTree->expandAll();
-        # m_scenePropertyEditor->setScene(m_scene);
-        # m_timeline->expandTree();
-
-        # if(fullyLoaded)
-        # {
-        #     loadedFile.setFile(fileName);
-        #     emit this->enableSave(true);
-        #     setTitle();
-        # }
-        # m_timeline->setPlayheadPosition(0);
+            self.loadedFile.setFile(fileName)
+            self.enableSave.emit(True)
+            self.setTitle()
+            self.timeline.setPlayheadPosition(0)
     
     def exportMovie(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("Video format (*.mpg *.mp4 *.avi *.gif);;All Files (*)")
+        dialog.setNameFilter("Video format (*.mpg *.mp4 *.avi *.gif)All Files (*)")
         dialog.setWindowTitle("Export Animation to Movie")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
@@ -587,7 +582,7 @@ class MainWindow(QMainWindow):
     def newfile(self):
         self.reset()
         self.fillTree()
-        #emit this.enableSave(false)
+        self.enableSave.emit(False)
         self.loadedFile.setFile("")
         self.setTitle()
         self.scenePropertyEditor.setScene(self.scene)
@@ -599,16 +594,42 @@ class MainWindow(QMainWindow):
             self.root.removeChild(treeItem)
             del treeItem
 
-        # itemList = self.scene.items(Qt.AscendingOrder)
-        # for item in itemList:
-        #     if item is AnimationItem and not item.isSceneRect():
-        #         treeItem = QTreeWidgetItem()
-        #         treeItem.setText(0, item.id())
-        #         treeItem.setIcon(0, QIcon(":/images/rect.png"))
-        #         treeItem.setData(0,  Qt.ToolTipRole, item)
-        #         self.root.addChild(treeItem)
-        #         self.addCheckboxes(treeItem, item)
-                #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
+        for item in self.scene.childItems():
+            treeItem = QTreeWidgetItem()
+            treeItem.setText(0, item.objectName())
+            treeItem.setIcon(0, QIcon(":/images/rect.png"))
+            treeItem.setData(0,  Qt.ToolTipRole, item)
+            self.root.addChild(treeItem)
+            self.addItemsToTree(item, treeItem)
+            self.addCheckboxes(treeItem, item)
+
+    def addItemsToTree(self, item, tree):
+        for item in item.childItems():
+            treeItem = QTreeWidgetItem()
+            treeItem.setText(0, item.objectName())
+            treeItem.setIcon(0, QIcon(":/images/rect.png"))
+            treeItem.setData(0,  Qt.ToolTipRole, item)
+            tree.addChild(treeItem)
+            self.addCheckboxes(treeItem, item)
+            #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
+
+    def addCheckboxes(self, treeItem, item):
+        elementVisible = QCheckBox()
+        elementVisible.setProperty("item", item)
+        elementVisible.setFixedWidth(18)
+        elementLocked = QCheckBox()
+        elementLocked.setProperty("item", item)
+        elementLocked.setFixedWidth(18)
+        self.elementTree.setItemWidget(treeItem, 1, elementVisible)
+        self.elementTree.setItemWidget(treeItem, 2, elementLocked)
+        elementVisible.setStyleSheet("QCheckBox {spacing: 3px} QCheckBox::indicator{width: 18px height: 9px} QCheckBox::indicator:unchecked {image: url(:/images/eye_unchecked.png)} QCheckBox::indicator:checked {image: url(:/images/eye_checked.png)}")
+        elementLocked.setStyleSheet("QCheckBox {spacing: 3px} QCheckBox::indicator{width: 18px height: 9px} QCheckBox::indicator:unchecked {image: url(:/images/lock_unchecked.png)} QCheckBox::indicator:checked {image: url(:/images/lock_checked.png)}")
+        elementVisible.setToolTip("Visibility")
+        elementLocked.setToolTip("Lock")
+        #elementVisible.setChecked(!item.isVisible())
+        #elementLocked.setChecked(!item.flags().testFlag(QGraphicsItem::ItemIsSelectable))
+        #connect(elementVisible, SIGNAL(stateChanged(int)), this, SLOT(elementVisibleStateChanged(int)))
+        #connect(elementLocked, SIGNAL(stateChanged(int)), this, SLOT(elementLockStateChanged(int)))
 
     def idChanged(self, item, id):
         for child in self.root.child:
@@ -617,14 +638,15 @@ class MainWindow(QMainWindow):
                 break
 
     def elementTreeItemChanged(self, newItem, i):
-        self.scene.clearSelection()
-        item = newItem.data(0, Qt.ToolTipRole).value
-        if item:
-            item.setSelected(True)
-            self.itemPropertyEditor.setItem(item)
-            self.propertiesdock.setWidget(self.itemPropertyEditor)
-        else:
-            self.propertiesdock.setWidget(self.scenePropertyEditor)
+        print("elementTreeItemChanged", newItem, i)
+        #self.scene.clearSelection()
+        #item = newItem.data(0, Qt.ToolTipRole).value
+        #if item:
+        #    item.setSelected(True)
+        #    self.itemPropertyEditor.setItem(item)
+        #    self.propertiesdock.setWidget(self.itemPropertyEditor)
+        #else:
+        #   self.propertiesdock.setWidget(self.scenePropertyEditor)
 
     def sceneSizeChanged(self, width, height):
         self.view.setSceneRect(-100, -100, width + 200, height + 200)
