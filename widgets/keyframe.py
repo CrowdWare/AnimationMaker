@@ -26,6 +26,8 @@ class Keyframe(QQuickItem):
         super().__init__(parent)
         self._time = 0
         self._value = 0
+        self._easing = 0
+        self.next = None
 
     @Property(int)
     def time(self):
@@ -42,3 +44,11 @@ class Keyframe(QQuickItem):
     @value.setter
     def value(self, value):
         self._value = value
+
+    @Property(int)
+    def easing(self):
+        return self._easing
+
+    @easing.setter
+    def easing(self, easing):
+        self._easing = easing

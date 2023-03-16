@@ -29,12 +29,4 @@ class QmlEditor(QQuickWidget):
     def mousePressEvent(self, event):
         item = self.rootObject()
         child = item.childAt(event.position().x(), event.position().y())
-        # if child:
-        #     color = QQmlProperty(child, "color")
-        #     color.write(QColor("#00FFFF"))
-            
-        #     x = QQmlProperty(child, "x")
-        #     x.write(20)
-        #     y = QQmlProperty(child, "y")
-        #     y.write(20)
         return super().mousePressEvent(event)

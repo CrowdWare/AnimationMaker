@@ -25,7 +25,7 @@ from widgets.scenepropertyeditor import ScenePropertyEditor
 from widgets.qmlsceneview import QmlSceneView
 from widgets.transitioneditor import TransitionEditor
 from PySide6.QtWidgets import QCheckBox, QSizePolicy, QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QSplitter, QComboBox, QDockWidget, QMenu, QToolBar
-from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QSettings, QSize, QPoint, QIODevice, QFile, QDir, QEventLoop, QThread, QProcess
+from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QSettings, QSize, QPoint, QDir, QEventLoop, QThread, QProcess
 from PySide6.QtGui import QUndoStack, QAction, QKeySequence, QActionGroup, QIcon, QPixmap, QImage, QCursor, QImageReader
 import resources
 
@@ -387,6 +387,7 @@ class MainWindow(QMainWindow):
 
         self.scene = self.view.load(fileName)
         if self.scene:
+            self.scene.arrangeKeyframes()
             self.timeline.setScene(self.scene)
 
             self.fillTree()

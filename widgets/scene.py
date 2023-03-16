@@ -17,7 +17,8 @@
 #  along with AnimationMaker.  If not, see <http://www.gnu.org/licenses/>.
 #
 #############################################################################
-from PySide6.QtCore import Property
+from widgets.keyframes import Keyframes
+from PySide6.QtCore import Property, QEasingCurve
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtQml import QQmlProperty
 
@@ -65,8 +66,53 @@ class Scene(QQuickItem):
         return self._isChanged
     
     def setPlayheadPosition(self, pos):
-        # simulate animation
-        for item in self.childItems():
-            x = QQmlProperty(item, "x")
-            val = x.read()
-            x.write(val + 2)
+        self.setPlayheadPositionForItem(self, pos)
+
+    def setPlayheadPositionForItem(self, item, pos):
+        for item in item.childItems():
+            for child in item.childItems():
+                if isinstance(child, Keyframes):
+                    first = child.childItems()[0]
+                    found = None
+                    keyframe = first
+                    while keyframe and keyframe.next:
+                        if (keyframe == first and pos < first.time) or keyframe.time <= pos:
+                            found = keyframe
+                            break
+                        keyframe = keyframe.next
+                    if found:
+                        if child.type == "int":
+                            if found.easing >= 0:
+                                value = int(self.calculateValue(found, pos))
+                            else:
+                                value = found.value
+                            prop = QQmlProperty(item, child.propertyname)
+                            prop.write(value)
+                        else:
+                            print("type not supported yet", child.type)
+                else:
+                    self.setPlayheadPositionForItem(child, pos)
+
+    def getProgressValue(self, keyframe, playheadPosition):
+        easing = QEasingCurve(QEasingCurve.Type(keyframe.easing))
+        progress = 1.0 / (keyframe.next.time - keyframe.time) * (playheadPosition - keyframe.time)
+        return easing.valueForProgress(progress)
+    
+    def calculateValue(self, keyframe, playheadPosition):
+        return keyframe.value + (keyframe.next.value - keyframe.value) / 1.0 * self.getProgressValue(keyframe, playheadPosition)
+    
+    def arrangeKeyframes(self):
+        self.arrangeItemKeyframes(self)
+
+    def arrangeItemKeyframes(self, item):
+        for item in item.childItems():
+            for child in item.childItems():
+                if isinstance(child, Keyframes):
+                    prev = child.childItems()[0]
+                    for keyframe in child.childItems():
+                        if keyframe != prev:
+                            prev.next = keyframe
+                            prev = keyframe
+                else:
+                    self.arrangeItemKeyframes(child)
+    

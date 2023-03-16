@@ -24,7 +24,7 @@ from PySide6.QtQuick import QQuickItem
 class Keyframes(QQuickItem):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._propertyname
+        self._propertyname = ""
         self._type = ""
 
     @Property('QString')
