@@ -18,17 +18,15 @@
 #
 #############################################################################
 from widgets.animationscene import EditMode, AnimationScene
-from widgets.scene import Scene
-from widgets.animationitem import AnimationItem
+from widgets.keyframes import Keyframes
 from widgets.timeline import Timeline
 from widgets.itempropertyeditor import ItemPropertyEditor
 from widgets.scenepropertyeditor import ScenePropertyEditor
 from widgets.qmlsceneview import QmlSceneView
 from widgets.transitioneditor import TransitionEditor
 from PySide6.QtWidgets import QCheckBox, QSizePolicy, QFileDialog, QMessageBox, QVBoxLayout, QHBoxLayout, QMainWindow, QTreeWidgetItem, QAbstractItemView, QWidget, QTreeWidget, QSplitter, QComboBox, QDockWidget, QMenu, QToolBar
-from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QUrl, QSettings, QEvent, QSize, QPoint, QIODevice, QFile, QDir, QEventLoop, QThread, QProcess
+from PySide6.QtCore import QFileInfo, Signal, Qt, QCoreApplication, QSettings, QSize, QPoint, QIODevice, QFile, QDir, QEventLoop, QThread, QProcess
 from PySide6.QtGui import QUndoStack, QAction, QKeySequence, QActionGroup, QIcon, QPixmap, QImage, QCursor, QImageReader
-from PySide6.QtQml import QQmlEngine, QQmlComponent, QQmlProperty
 import resources
 
 class MainWindow(QMainWindow):
@@ -377,7 +375,7 @@ class MainWindow(QMainWindow):
     def open(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker Markup(*.aml)All Files (*)")
+        dialog.setNameFilter("AnimationMaker Markup(*.qml)All Files (*)")
         dialog.setWindowTitle("Open Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -524,11 +522,11 @@ class MainWindow(QMainWindow):
         fileName = ""
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker (*.aml)All Files (*)")
+        dialog.setNameFilter("AnimationMaker (*.qml)All Files (*)")
         dialog.setWindowTitle("Save Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
-        dialog.setDefaultSuffix("aml")
+        dialog.setDefaultSuffix("qml")
         if dialog.exec():
             fileName = dialog.selectedFiles()[0]
         del dialog
@@ -545,11 +543,11 @@ class MainWindow(QMainWindow):
         fileName = ""
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setNameFilter("AnimationMaker (*.aml)All Files (*)")
+        dialog.setNameFilter("AnimationMaker (*.qml)All Files (*)")
         dialog.setWindowTitle("Save Animation")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
-        dialog.setDefaultSuffix("aml")
+        dialog.setDefaultSuffix("qml")
         if dialog.exec():
             fileName = dialog.selectedFiles().first()
         del dialog
@@ -605,13 +603,14 @@ class MainWindow(QMainWindow):
 
     def addItemsToTree(self, item, tree):
         for item in item.childItems():
-            treeItem = QTreeWidgetItem()
-            treeItem.setText(0, item.objectName())
-            treeItem.setIcon(0, QIcon(":/images/rect.png"))
-            treeItem.setData(0,  Qt.ToolTipRole, item)
-            tree.addChild(treeItem)
-            self.addCheckboxes(treeItem, item)
-            #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
+            if not isinstance(item, Keyframes):
+                treeItem = QTreeWidgetItem()
+                treeItem.setText(0, item.objectName())
+                treeItem.setIcon(0, QIcon(":/images/rect.png"))
+                treeItem.setData(0,  Qt.ToolTipRole, item)
+                tree.addChild(treeItem)
+                self.addCheckboxes(treeItem, item)
+                #connect(ri, SIGNAL(idChanged(AnimationItem*,QString)), this, SLOT(idChanged(AnimationItem*,QString)))
 
     def addCheckboxes(self, treeItem, item):
         elementVisible = QCheckBox()

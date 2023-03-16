@@ -21,6 +21,8 @@ import sys
 import os
 from widgets.mainwindow import MainWindow
 from widgets.scene import Scene
+from widgets.keyframe import Keyframe
+from widgets.keyframes import Keyframes
 from PySide6.QtWidgets import QApplication, QStyleFactory
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QPalette, QColor, QIcon, QFont
@@ -37,6 +39,8 @@ if __name__ == "__main__":
     app.setStyle(QStyleFactory.create("Fusion"))
     
     qmlRegisterType(Scene, 'AnimationMaker', 2, 0, 'Scene')
+    qmlRegisterType(Keyframe, 'AnimationMaker', 2, 0, 'Keyframe')
+    qmlRegisterType(Keyframes, 'AnimationMaker', 2, 0, 'Keyframes')
 
     font = QFont("Sans Serif", 10)
     app.setFont(font)
